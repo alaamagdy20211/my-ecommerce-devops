@@ -14,3 +14,7 @@ variable "availability_zones" {
 variable "eks_cluster_name" {
   type = string
 }
+variable "region" {
+  type = string
+  default = "us-east-1"
+}
