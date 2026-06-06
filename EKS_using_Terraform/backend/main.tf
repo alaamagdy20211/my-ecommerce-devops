@@ -18,12 +18,3 @@ resource "aws_s3_bucket" "terraform_state"{
 
 }
 
-terraform {
-    backend "s3" {
-        bucket= "alaa3008-terraform-state-2026"
-        key= "env/terraform_state-file"
-        region= "us-east-1"
-        use_lockfile = true
-        encrypt = true
-    }
-}
