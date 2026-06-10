@@ -36,3 +36,26 @@ variable "region" {
   type    = string
   default = "us-east-1"
 }
+variable "ebs_csi_addon_version" {
+  type = string
+  
+}
+
+variable "storage_class_name" {
+  type = string
+  
+}
+
+variable "ebs_type" {
+  type = string
+  
+}
+
+
+variable "volume_binding_mode" {
+  type = string
+}
+
+variable "environment" {
+  type = string
+}

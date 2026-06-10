@@ -33,3 +33,10 @@ node_groups = {
     }
   }
 }
+
+ebs_csi_addon_version = "v1.0.0"
+storage_class_name = "gp3"
+ebs_type = "gp3"
+volume_binding_mode = "WaitForFirstConsumer"
+environment = "dev"
+

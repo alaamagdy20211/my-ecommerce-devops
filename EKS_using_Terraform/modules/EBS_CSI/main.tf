@@ -1,55 +1,60 @@
-resource "aws_iam_policy" "ebs_csi" {
-  name = "AmazonEKS_EBS_CSI_Driver_Policy"
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = [
-          "ec2:CreateVolume",
-          "ec2:DeleteVolume",
-          "ec2:AttachVolume",
-          "ec2:DetachVolume",
-          "ec2:DescribeVolumes",
-          "ec2:DescribeInstances",
-          "ec2:CreateTags"
-        ],
-        Resource = "*"
-      }
-    ]
-  })
-}
-
 resource "aws_iam_role" "ebs_csi" {
-  name = "AmazonEKS_EBS_CSI_DriverRole"
+  name = "${var.cluster_name}-ebs-csi-role"
 
   assume_role_policy = jsonencode({
-    Version = "2012-10-17",
+    Version = "2012-10-17"
+
     Statement = [
       {
-        Effect = "Allow",
+        Effect = "Allow"
+
         Principal = {
-          Federated = aws_iam_openid_connect_provider.eks.arn
-        },
-        Action = "sts:AssumeRoleWithWebIdentity",
+          Federated = var.oidc_provider_arn
+        }
+
+        Action = "sts:AssumeRoleWithWebIdentity"
+
         Condition = {
           StringEquals = {
-            "${replace(data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer, "https://", "")}:sub" = "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+            "${replace(var.oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:kube-system:ebs-csi-controller-sa"
           }
         }
       }
     ]
   })
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+
+resource "aws_iam_role_policy_attachment" "ebs_csi" {
+  role = aws_iam_role.ebs_csi.name
+
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
 
 resource "aws_eks_addon" "ebs_csi" {
-  cluster_name             = var.cluster_name
-  addon_name               = "aws-ebs-csi-driver"
+  cluster_name = var.cluster_name
+
+  addon_name    = "aws-ebs-csi-driver"
+  addon_version = var.addon_version
+
   service_account_role_arn = aws_iam_role.ebs_csi.arn
 
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.ebs_csi
+  ]
 }
 
 
@@ -65,4 +70,9 @@ resource "kubernetes_storage_class" "ebs" {
   parameters = {
     type = var.ebs_type
   }
+
+  depends_on = [
+    aws_eks_addon.ebs_csi
+  ]
 }
+

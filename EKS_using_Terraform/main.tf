@@ -41,3 +41,32 @@ module "eks" {
   cluster_version  = var.cluster_version
   region           = var.region
 }
+data "tls_certificate" "eks" {
+  url = module.eks.oidc_issuer_url
+}
+
+
+resource "aws_iam_openid_connect_provider" "eks" {
+  client_id_list = ["sts.amazonaws.com"]
+
+  thumbprint_list = [
+    data.tls_certificate.eks.certificates[0].sha1_fingerprint
+  ]
+
+  url = module.eks.oidc_issuer_url
+}
+
+module "ebs_csi" {
+  source = "./modules/EBS_CSI"
+
+  cluster_name       = module.eks.cluster_name
+  oidc_provider_arn  = aws_iam_openid_connect_provider.eks.arn
+  oidc_issuer_url    = module.eks.oidc_issuer_url
+  addon_version      = var.ebs_csi_addon_version
+  storage_class_name = var.storage_class_name
+  ebs_type           = var.ebs_type
+  volume_binding_mode = var.volume_binding_mode
+  environment        = var.environment
+
+}
+
