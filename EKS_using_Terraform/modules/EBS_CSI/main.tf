@@ -58,7 +58,7 @@ resource "aws_eks_addon" "ebs_csi" {
 }
 
 
-resource "kubernetes_storage_class" "ebs" {
+resource "kubernetes_storage_class_v1" "ebs" {
   metadata {
     name = var.storage_class_name
   }

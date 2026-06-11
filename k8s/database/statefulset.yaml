@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db-statefulset
+spec:
+  selector:
+    matchLabels:
+      app: db 
+      type: devops-statefulset
+  serviceName: "db"
+  replicas: 3
+  minReadySeconds: 10
+  template:
+    metadata:
+      labels:
+        app: db
+        type: devops-statefulset
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: db
+        image: mongo:latest
+        ports:
+        - containerPort: 27017
+          name: mongo
+        volumeMounts:
+        - name: mongo-persistent-storage
+          mountPath: /data/db
+        env:
+        - name: SECRET_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: MONGO_INITDB_ROOT_USERNAME
+        - name: SECRET_PASSWORD 
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: MONGO_INITDB_ROOT_PASSWORD
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m" 
+        
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-persistent-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "ebs-sc"
+      resources:
+        requests:
+          storage: 1Gi

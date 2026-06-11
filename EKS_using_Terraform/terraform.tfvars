@@ -20,21 +20,21 @@ availability_zones = [
 ]
 eks_cluster_name = "eks-cluster-1"
 
-cluster_version = "1.30"
+cluster_version = "1.35"
 
 node_groups = {
   node_group_1 = {
     instance_types = ["t3.micro"]
     capacity_type  = "ON_DEMAND"
     scaling_config = {
-      desired_size = 2
-      max_size     = 3
-      min_size     = 1
+      desired_size = 3
+      max_size     = 4
+      min_size     = 2
     }
   }
 }
 
-ebs_csi_addon_version = "v1.0.0"
+ebs_csi_addon_version = "v1.61.1-eksbuild.1"
 storage_class_name = "gp3"
 ebs_type = "gp3"
 volume_binding_mode = "WaitForFirstConsumer"

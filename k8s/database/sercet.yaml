@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+type: Opaque
+data:
+  MONGO_INITDB_ROOT_USERNAME: YWxhYTMwMDgK
+  MONGO_INITDB_ROOT_PASSWORD: MTIzCg==

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+      type: devops-backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        type: devops-backend
+    spec:
+      containers:
+      - name: backend
+        image: alaa/node-react-ecommerce-backend:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: db-host
+          valueFrom:
+           secretKeyRef:
+            name: db-secret
+            key: DB-HOST
+        - name: db-username
+          valueFrom:
+           secretKeyRef:
+            name: db-secret
+            key: DB_USER
+        - name: db-username
+          valueFrom:
+           secretKeyRef:
+            name: db-secret
+            key: DB_USER
+        - name: db-pass
+          valueFrom:
+           secretKeyRef:
+            name: db-secret
+            key: DB_PASSWORD
+        - name: db-port
+          valueFrom:
+           secretKeyRef:
+            name: db-secret
+            key: DB_PORT
+        resources:
+          limits:
+            memory: "512Mi"   
+            cpu: "500m"
+          requests:   
+            memory: "256Mi"
+            cpu: "250m"
+  
