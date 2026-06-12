@@ -1,9 +1,3 @@
-output "repository_urls" {
-  description = "Map of repository name → ECR URL"
-  value       = { for k, v in aws_ecr_repository.this : k => v.repository_url }
-}
-
-output "repository_arns" {
-  description = "Map of repository name → ECR ARN"
-  value       = { for k, v in aws_ecr_repository.this : k => v.arn }
+output "repository_url" {
+  value = aws_ecr_repository.app.repository_url
 }

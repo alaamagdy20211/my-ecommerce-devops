@@ -1,61 +1,35 @@
-variable "vpc_cidr" {
-  type = string
+variable "region" {
+  default = "us-east-1"
 }
 
-variable "public_subnet_cidrs" {
+variable "name" {}
+
+variable "cluster_name" {}
+variable "cluster_version" {}
+
+variable "vpc_cidr" {}
+
+variable "public_subnets" {
   type = list(string)
-}
-variable "private_subnet_cidrs" {
-  type = list(string)
-}
-variable "availability_zones" {
-  type = list(string)
-}
-variable "eks_cluster_name" {
-  type = string
 }
 
+variable "private_subnets" {
+  type = list(string)
+}
+
+variable "azs" {
+  type = list(string)
+}
 
 variable "node_groups" {
   type = map(object({
+    desired        = number
+    max            = number
+    min            = number
     instance_types = list(string)
-    capacity_type  = string
-    scaling_config = object({
-      desired_size = number
-      max_size     = number
-      min_size     = number
-    })
   }))
 }
 
-variable "cluster_version" {
-  type = string
-}
-
-variable "region" {
-  type    = string
-  default = "us-east-1"
-}
-variable "ebs_csi_addon_version" {
-  type = string
-  
-}
-
-variable "storage_class_name" {
-  type = string
-  
-}
-
-variable "ebs_type" {
-  type = string
-  
-}
-
-
-variable "volume_binding_mode" {
-  type = string
-}
-
-variable "environment" {
-  type = string
+variable "tags" {
+  type = map(string)
 }

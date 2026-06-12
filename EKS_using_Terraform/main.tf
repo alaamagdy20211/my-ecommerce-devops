@@ -1,18 +1,28 @@
 terraform {
+  required_version = ">= 1.5"
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 3.2"
+    }
+
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.13"
+    }
+
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
-}
 
-provider "aws" {
-  region = "us-east-1"
-}
-
-
-terraform {
   backend "s3" {
     bucket       = "alaa3008-terraform-state-2026"
     key          = "env/terraform_state-file"
@@ -21,61 +31,120 @@ terraform {
     encrypt      = true
   }
 }
+provider "aws" {
+  region = var.region
+}
 
+data "aws_eks_cluster" "this" {
+  name = module.eks.cluster_name
+    depends_on = [module.eks]
+
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = module.eks.cluster_name
+    depends_on = [module.eks]
+
+}
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.this.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.this.token
+}
+
+
+provider "helm" {
+  kubernetes {
+    host                   = data.aws_eks_cluster.this.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.this.token
+  }
+}
 module "vpc" {
-  source               = "./modules/VPC"
-  vpc_cidr             = var.vpc_cidr
-  public_subnet_cidrs  = var.public_subnet_cidrs
-  private_subnet_cidrs = var.private_subnet_cidrs
-  availability_zones   = var.availability_zones
-  eks_cluster_name     = var.eks_cluster_name
-  region               = var.region
+  source = "./modules/VPC"
+
+  name             = var.name
+  vpc_cidr         = var.vpc_cidr
+  public_subnets   = var.public_subnets
+  private_subnets  = var.private_subnets
+  azs              = var.azs
+
+  tags = var.tags
 }
 
 module "eks" {
-  source           = "./modules/EKS"
-  vpc_id           = module.vpc.vpc_id
-  subnet_ids       = module.vpc.private_subnet_ids
-  eks_cluster_name = var.eks_cluster_name
-  node_groups      = var.node_groups
-  cluster_version  = var.cluster_version
-  region           = var.region
-}
-data "tls_certificate" "eks" {
-  url = module.eks.oidc_issuer_url
+  source = "./modules/EKS"
+
+  cluster_name    = var.cluster_name
+  cluster_version = var.cluster_version
+
+  private_subnets = module.vpc.private_subnets
+
+  node_groups = var.node_groups
 }
 
+module "iam_policy" {
+  source = "./modules/iam"
+  cluster_name = var.cluster_name
+}
+module "alb_irsa" {
+  source = "./modules/IRSA"
+  name                = "alb-controller"
+  oidc_provider_arn   = module.eks.oidc_arn
+  oidc_issuer         = replace(module.eks.oidc_url, "https://", "")
+  namespace           = "kube-system"
+  service_account     = "aws-load-balancer-controller"
+  policy_arn = module.iam_policy.alb_policy_arn
+}
+module "ebs_csi_irsa" {
+  source = "./modules/IRSA"
+  name              = "ebs-csi"
+  oidc_provider_arn = module.eks.oidc_arn
+  oidc_issuer       = replace(module.eks.oidc_url, "https://", "")
+  namespace       = "kube-system"
+  service_account = "ebs-csi-controller-sa"
+  policy_arn = module.iam_policy.ebs_csi_policy_arn
+}
 
-resource "aws_iam_openid_connect_provider" "eks" {
-  client_id_list = ["sts.amazonaws.com"]
-
-  thumbprint_list = [
-    data.tls_certificate.eks.certificates[0].sha1_fingerprint
-  ]
-
-  url = module.eks.oidc_issuer_url
+module "secret_manager_irsa" {
+  source = "./modules/IRSA"
+  name              = "external-secrets"
+  oidc_provider_arn = module.eks.oidc_arn
+  oidc_issuer       = replace(module.eks.oidc_url, "https://", "")
+  namespace         = "external-secrets"
+  service_account   = "external-secrets-sa"
+  policy_arn        = module.iam_policy.secretsmanager_policy_arn
+}
+module "alb_controller" {
+  source = "./modules/ALB_ingress"
+  region= var.region
+  cluster_name  = module.eks.cluster_name
+  vpc_id         = module.vpc.vpc_id
 }
 
 module "ebs_csi" {
   source = "./modules/EBS_CSI"
 
-  cluster_name       = module.eks.cluster_name
-  oidc_provider_arn  = aws_iam_openid_connect_provider.eks.arn
-  oidc_issuer_url    = module.eks.oidc_issuer_url
-  addon_version      = var.ebs_csi_addon_version
-  storage_class_name = var.storage_class_name
-  ebs_type           = var.ebs_type
-  volume_binding_mode = var.volume_binding_mode
-  environment        = var.environment
+  cluster_name = module.eks.cluster_name
+
+  addon_version = "v1.44.0-eksbuild.1"
+
+  irsa_role_arn = module.ebs_csi_irsa.role_arn
 
 }
 
 
-module "external_secrets" {
-  source = "../modules/external-secrets"
-  cluster_name        = var.cluster_name
-  namespace           = "external-secrets"
-  service_account_name = "external-secrets-sa"
-  aws_region          = var.aws_region
+module "secret-manager" {
+  source = "./modules/external_secrets"
+  namespace = "external-secrets"
+  service_account_name ="external-secrets-sa"
 }
 
+
+module "ecr" {
+  source = "./modules/ECR"
+  cluster_name   = var.cluster_name
+  node_role_arn  = module.eks.node_role_arn
+  images_to_keep = 10
+}
