@@ -1,34 +1,78 @@
+# variable "cluster_name" {
+#   type = string
+# }
+
+# variable "oidc_provider_arn" {
+#   type = string
+# }
+
+# variable "oidc_issuer_url" {
+#   type = string
+# }
+
+# variable "addon_version" {
+#   type = string
+# }
+
+# variable "storage_class_name" {
+#   type    = string
+#   default = "gp3"
+# }
+
+# variable "ebs_type" {
+#   type    = string
+#   default = "gp3"
+# }
+
+# variable "volume_binding_mode" {
+#   type    = string
+#   default = "WaitForFirstConsumer"
+# }
+
+# variable "environment" {
+#   type = string
+# }
+
 variable "cluster_name" {
-  type = string
+  description = "Name of the EKS cluster"
+  type        = string
 }
 
 variable "oidc_provider_arn" {
-  type = string
+  description = "ARN of the OIDC provider for IRSA"
+  type        = string
 }
 
 variable "oidc_issuer_url" {
-  type = string
+  description = "OIDC issuer URL (https://...) of the EKS cluster"
+  type        = string
 }
 
 variable "addon_version" {
-  type = string
+  description = "Version of the aws-ebs-csi-driver add-on"
+  type        = string
 }
 
 variable "storage_class_name" {
-  type    = string
-  default = "gp3"
+  description = "Name for the Kubernetes StorageClass"
+  type        = string
+  default     = "gp3"
 }
 
 variable "ebs_type" {
-  type    = string
-  default = "gp3"
+  description = "EBS volume type (gp3 recommended)"
+  type        = string
+  default     = "gp3"
 }
 
 variable "volume_binding_mode" {
-  type    = string
-  default = "WaitForFirstConsumer"
+  description = "StorageClass volume binding mode"
+  type        = string
+  default     = "WaitForFirstConsumer"
 }
 
-variable "environment" {
-  type = string
+variable "tags" {
+  description = "Common tags applied to all resources"
+  type        = map(string)
+  default     = {}
 }
