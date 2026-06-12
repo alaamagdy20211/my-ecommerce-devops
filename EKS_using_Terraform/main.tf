@@ -70,3 +70,12 @@ module "ebs_csi" {
 
 }
 
+
+module "external_secrets" {
+  source = "../modules/external-secrets"
+  cluster_name        = var.cluster_name
+  namespace           = "external-secrets"
+  service_account_name = "external-secrets-sa"
+  aws_region          = var.aws_region
+}
+

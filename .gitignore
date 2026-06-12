@@ -40,3 +40,5 @@ frontend/yarn-lock.json
 *.tfstate.*
 *.tfstate.backup
 
+secrets.json
+
