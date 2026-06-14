@@ -10,3 +10,12 @@ variable "images_to_keep" {
 variable "node_role_arn" {
   type = string
 }
+variable "repositories" {
+  description = "List of ECR repositories to create"
+  type        = list(string)
+
+  default = [
+    "frontend",
+    "backend"
+  ]
+}

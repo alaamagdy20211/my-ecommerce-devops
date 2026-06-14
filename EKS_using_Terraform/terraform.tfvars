@@ -35,3 +35,6 @@ tags = {
   Environment = "dev"
   Project     = "eks-platform"
 }
+
+
+  repositories = ["frontend", "backend"]

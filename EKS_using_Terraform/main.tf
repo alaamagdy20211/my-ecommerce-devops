@@ -195,4 +195,5 @@ module "ecr" {
   cluster_name   = var.cluster_name
   node_role_arn  = module.eks.node_role_arn
   images_to_keep = 10
+   repositories = var.repositories
 }
