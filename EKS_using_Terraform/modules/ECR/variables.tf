@@ -10,4 +10,3 @@ variable "images_to_keep" {
 variable "node_role_arn" {
   type = string
 }
-

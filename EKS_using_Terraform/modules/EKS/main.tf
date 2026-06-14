@@ -1,4 +1,3 @@
-
 resource "aws_iam_role" "cluster" {
   name = "${var.cluster_name}-cluster-role"
 
@@ -12,9 +11,9 @@ resource "aws_iam_role" "cluster" {
       }
     }]
   })
+
+  tags = var.tags
 }
-
-
 
 resource "aws_iam_role_policy_attachment" "cluster" {
   role       = aws_iam_role.cluster.name
@@ -30,6 +29,8 @@ resource "aws_eks_cluster" "eks_cluster" {
     subnet_ids = var.private_subnets
   }
 
+  tags = var.tags
+
   depends_on = [aws_iam_role_policy_attachment.cluster]
 }
 
@@ -38,13 +39,14 @@ data "tls_certificate" "oidc" {
 }
 
 resource "aws_iam_openid_connect_provider" "this" {
-  url = aws_eks_cluster.eks_cluster.identity[0].oidc[0].issuer
-
+  url            = aws_eks_cluster.eks_cluster.identity[0].oidc[0].issuer
   client_id_list = ["sts.amazonaws.com"]
 
   thumbprint_list = [
     data.tls_certificate.oidc.certificates[0].sha1_fingerprint
   ]
+
+  tags = var.tags
 }
 
 resource "aws_iam_role" "eks_node_role" {
@@ -60,8 +62,9 @@ resource "aws_iam_role" "eks_node_role" {
       }
     }]
   })
-}
 
+  tags = var.tags
+}
 
 resource "aws_iam_role_policy_attachment" "node" {
   for_each = toset([
@@ -81,6 +84,7 @@ resource "aws_eks_node_group" "this" {
   node_group_name = "${var.cluster_name}-${each.key}"
   node_role_arn   = aws_iam_role.eks_node_role.arn
   subnet_ids      = var.private_subnets
+  ami_type        = "AL2023_x86_64_STANDARD"
 
   scaling_config {
     desired_size = each.value.desired
@@ -89,4 +93,16 @@ resource "aws_eks_node_group" "this" {
   }
 
   instance_types = each.value.instance_types
+  capacity_type  = "ON_DEMAND"
+
+  update_config {
+    max_unavailable = 1
+  }
+
+  tags = var.tags
+
+  depends_on = [
+    aws_iam_role_policy_attachment.node,
+    aws_eks_cluster.eks_cluster,
+  ]
 }

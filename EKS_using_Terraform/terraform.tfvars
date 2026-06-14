@@ -23,11 +23,11 @@ azs = [
 ]
 
 node_groups = {
-  general = {
-    desired        = 2
+  generalll = {
+    desired        = 4
     max            = 4
     min            = 1
-    instance_types = ["t3.medium"]
+    instance_types = ["c7i-flex.large"]
   }
 }
 

@@ -5,7 +5,6 @@ resource "aws_iam_policy" "alb_controller" {
   policy = file("${path.module}/alb_policy.json")
 }
 
-
 resource "aws_iam_policy" "secrets_manager" {
   name = "${var.cluster_name}-secrets-manager-policy"
 
@@ -23,7 +22,6 @@ resource "aws_iam_policy" "secrets_manager" {
     ]
   })
 }
-
 
 resource "aws_iam_policy" "ebs_csi" {
   name = "${var.cluster_name}-ebs-csi-policy"
@@ -51,6 +49,4 @@ resource "aws_iam_policy" "ebs_csi" {
       }
     ]
   })
-
 }
-

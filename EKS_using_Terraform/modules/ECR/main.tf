@@ -10,7 +10,6 @@ resource "aws_ecr_repository" "app" {
   encryption_configuration {
     encryption_type = "AES256"
   }
-
 }
 
 resource "aws_ecr_lifecycle_policy" "app" {
