@@ -1,3 +1,13 @@
+
+resource "aws_secretsmanager_secret" "db_secret" {
+  name = "ecommerce-db-secret"
+}
+
+resource "aws_secretsmanager_secret_version" "db_secret_value" {
+  secret_id     = aws_secretsmanager_secret.db_secret.id
+  secret_string = file("${path.module}/db-secret.json")
+}
+
 resource "helm_release" "external_secrets" {
   name       = "external-secrets"
   repository = "https://charts.external-secrets.io"
