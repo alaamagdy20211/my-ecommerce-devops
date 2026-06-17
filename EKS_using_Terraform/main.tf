@@ -182,3 +182,23 @@ module "ecr" {
   images_to_keep = 10
   repositories   = var.repositories
 }
+
+
+module "efs_csi_irsa" {
+  source = "./modules/IRSA"
+
+  name              = "efs-csi"
+  oidc_provider_arn = module.eks.oidc_arn
+  oidc_issuer       = replace(module.eks.oidc_url, "https://", "")
+  namespace         = "kube-system"
+  service_account   = "efs-csi-controller-sa"
+  policy_arn        = module.iam_policy.ebs_csi_policy_arn
+}
+
+module "efs_csi" {
+  source = "./modules/EFS_CSI"
+  service_account_name = "efs-csi-controller-sa"
+  irsa_role_arn = module.ebs_csi_irsa.role_arn
+  namespace= "kube-system"
+  depends_on = [module.eks, module.efs_csi_irsa]
+}
