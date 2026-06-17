@@ -1,11 +1,9 @@
 variable "namespace" {
   type    = string
-  default = "efs_csi_driver"
 }
 
 variable "service_account_name" {
   type    = string
-  default = "efs_csi_driver_sa"
 }
 
 variable "irsa_role_arn" {

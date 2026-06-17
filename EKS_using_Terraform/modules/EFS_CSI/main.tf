@@ -5,8 +5,6 @@ resource "helm_release" "efs_csi" {
   namespace  = var.namespace
   version    = var.helm_chart_version
 
-  create_namespace = true
-
   atomic = true
   wait   = true
   timeout = 600

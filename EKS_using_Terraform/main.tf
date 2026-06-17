@@ -198,7 +198,7 @@ module "efs_csi_irsa" {
 module "efs_csi" {
   source = "./modules/EFS_CSI"
   service_account_name = "efs-csi-controller-sa"
-  irsa_role_arn = module.ebs_csi_irsa.role_arn
+  irsa_role_arn = module.efs_csi_irsa.role_arn
   namespace= "kube-system"
   depends_on = [module.eks, module.efs_csi_irsa]
 }
