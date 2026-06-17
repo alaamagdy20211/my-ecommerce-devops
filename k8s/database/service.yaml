@@ -6,8 +6,10 @@ spec:
   selector:
     app: db
     type: devops-statefulset
-  type: ClusterIP
   ports:
   - name: mongo
+    protocol: TCP
     port: 27017
     targetPort: 27017
+  clusterIP: None
+

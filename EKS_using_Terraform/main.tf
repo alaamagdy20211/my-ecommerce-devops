@@ -7,11 +7,6 @@ terraform {
       version = "~> 6.0"
     }
 
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 3.2"
-    }
-
     helm = {
       source  = "hashicorp/helm"
       version = "~> 2.13"
@@ -36,41 +31,33 @@ provider "aws" {
   region = var.region
 }
 
-# FIX: The kubernetes and helm providers CANNOT reference module outputs directly.
-# At provider init time, module.eks does not exist yet, which causes a
-# chicken-and-egg error. The correct fix is to use data sources that are
-# evaluated AFTER the EKS cluster exists (Terraform resolves data sources
-# during the apply graph walk, not at init time, so this works correctly).
+# NOTE: The "kubernetes" provider and its data sources have been removed.
+# Nothing in this configuration creates "kubernetes_*" resources directly —
+# the ALB controller and External Secrets are both installed via "helm_release",
+# which only opens a connection to the cluster at the point Terraform actually
+# reconciles that specific resource (lazy connect). By that point module.eks
+# has already been created in the same apply, so its outputs are concrete.
 #
-# IMPORTANT: Run `terraform apply -target=module.eks` on first deploy,
-# then `terraform apply` for everything else. This is the standard pattern
-# for EKS + Helm/Kubernetes providers in a single root module.
-
-data "aws_eks_cluster" "this" {
-  name       = module.eks.cluster_name
-  depends_on = [module.eks]
-}
-
-data "aws_eks_cluster_auth" "this" {
-  name       = module.eks.cluster_name
-  depends_on = [module.eks]
-}
-
-provider "kubernetes" {
-  host                   = data.aws_eks_cluster.this.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.this.token
-}
-
+# The "kubernetes" provider, by contrast, must resolve its connection details
+# (host/cluster_ca_certificate/token) before Terraform can even build the plan
+# for any "kubernetes_*" resource. Since we don't have any such resources,
+# keeping that provider around only reintroduces the chicken-and-egg problem
+# for no benefit — so it's gone.
+#
+# The "helm" provider uses an "exec" block (same pattern as the AWS CLI uses
+# for kubeconfig) so the actual "aws eks get-token" call is deferred to
+# apply-time of each helm_release, not provider-init time. This means a
+# single "terraform apply" from a clean state works correctly — no need for
+# a two-step "-target=module.eks" apply.
 
 provider "helm" {
   kubernetes {
     host                   = module.eks.cluster_endpoint
-    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data[0].data)
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
     exec {
       api_version = "client.authentication.k8s.io/v1"
       command     = "aws"
-      args        = ["eks", "get-token", "--cluster-name", "eks-cluster", "--region", "us-east-1"]
+      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name, "--region", var.region]
     }
   }
 }
@@ -105,24 +92,20 @@ module "iam_policy" {
 }
 
 # ── IRSA Roles ───────────────────────────────────────────────────────────────
-
-# FIX: Each controller must use its OWN dedicated namespace and service account.
-# Sharing a single SA across ALB controller, EBS CSI, and External Secrets
-# means the IRSA trust policy only works for ONE of them — the one whose
-# "sub" claim matches. Each gets its own role with the correct SA binding.
+# Each controller gets its own dedicated IRSA role + namespace + service
+# account. Sharing a single SA across the ALB controller, EBS CSI, and
+# External Secrets would mean the trust policy's "sub" condition only
+# matches one of them.
 
 module "alb_irsa" {
   source = "./modules/IRSA"
 
   name              = "alb-controller"
   oidc_provider_arn = module.eks.oidc_arn
-  # FIX: oidc_issuer must strip the https:// prefix for the condition variable key
-  oidc_issuer     = replace(module.eks.oidc_url, "https://", "")
-  namespace       = "kube-system"
-  # FIX: service_account must match exactly what the Helm chart creates/uses.
-  # The ALB controller Helm chart default SA name is "aws-load-balancer-controller".
-  service_account = "aws-load-balancer-controller"
-  policy_arn      = module.iam_policy.alb_policy_arn
+  oidc_issuer       = replace(module.eks.oidc_url, "https://", "")
+  namespace         = "kube-system"
+  service_account   = "aws-load-balancer-controller"
+  policy_arn        = module.iam_policy.alb_policy_arn
 }
 
 module "ebs_csi_irsa" {
@@ -131,11 +114,9 @@ module "ebs_csi_irsa" {
   name              = "ebs-csi"
   oidc_provider_arn = module.eks.oidc_arn
   oidc_issuer       = replace(module.eks.oidc_url, "https://", "")
-  # FIX: EBS CSI driver addon uses the "kube-system" namespace
-  # and "ebs-csi-controller-sa" service account by convention.
-  namespace       = "kube-system"
-  service_account = "ebs-csi-controller-sa"
-  policy_arn      = module.iam_policy.ebs_csi_policy_arn
+  namespace         = "kube-system"
+  service_account   = "ebs-csi-controller-sa"
+  policy_arn        = module.iam_policy.ebs_csi_policy_arn
 }
 
 module "secret_manager_irsa" {
@@ -144,24 +125,20 @@ module "secret_manager_irsa" {
   name              = "external-secrets"
   oidc_provider_arn = module.eks.oidc_arn
   oidc_issuer       = replace(module.eks.oidc_url, "https://", "")
-  # FIX: External Secrets Operator uses its own namespace and SA.
-  # These must match the values passed to the Helm chart below.
-  namespace       = "external-secrets"
-  service_account = "external-secrets-sa"
-  policy_arn      = module.iam_policy.secretsmanager_policy_arn
+  namespace         = "external-secrets"
+  service_account   = "external-secrets-sa"
+  policy_arn        = module.iam_policy.secretsmanager_policy_arn
 }
 
 
 module "alb_controller" {
   source = "./modules/ALB_ingress"
 
-  region             = var.region
-  cluster_name       = module.eks.cluster_name
-  vpc_id             = module.vpc.vpc_id
-  # FIX: Pass the IRSA role ARN so the Helm chart can annotate the SA.
-  irsa_role_arn      = module.alb_irsa.role_arn
-  # FIX: SA name must match what the IRSA trust policy was created for.
-  service_account_name = "aws-load-balancer-controller"
+  region                = var.region
+  cluster_name          = module.eks.cluster_name
+  vpc_id                = module.vpc.vpc_id
+  irsa_role_arn         = module.alb_irsa.role_arn
+  service_account_name  = "aws-load-balancer-controller"
 
   depends_on = [module.eks, module.alb_irsa]
 }
@@ -185,7 +162,15 @@ module "secret-manager" {
   service_account_name = "external-secrets-sa"
   irsa_role_arn        = module.secret_manager_irsa.role_arn
 
-  depends_on = [module.eks, module.secret_manager_irsa]
+  # The ALB controller's mutating webhook ("mservice.elbv2.k8s.aws") intercepts
+  # every Service object cluster-wide, not just its own. If External Secrets'
+  # chart creates its Service while the ALB controller's webhook is registered
+  # but its pods aren't Ready yet, the API server blocks waiting for endpoints
+  # that don't exist, producing "no endpoints available for service
+  # aws-load-balancer-webhook-service". Sequencing after alb_controller (which
+  # has wait/atomic = true, so it only "completes" once its pods are actually
+  # Ready) removes that race.
+  depends_on = [module.eks, module.secret_manager_irsa, module.alb_controller]
 }
 
 
@@ -195,5 +180,5 @@ module "ecr" {
   cluster_name   = var.cluster_name
   node_role_arn  = module.eks.node_role_arn
   images_to_keep = 10
-   repositories = var.repositories
+  repositories   = var.repositories
 }

@@ -1,6 +1,7 @@
 
 resource "aws_secretsmanager_secret" "db_secret" {
   name = "ecommerce-db-secret"
+   recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "db_secret_value" {

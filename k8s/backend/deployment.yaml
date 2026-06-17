@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend-deployment
+  namespace: default
 spec:
   replicas: 2
   selector:
@@ -16,40 +17,46 @@ spec:
     spec:
       containers:
       - name: backend
-        image: alaa/node-react-ecommerce-backend:latest
+        image: 524558748637.dkr.ecr.us-east-1.amazonaws.com/eks-cluster/backend:latest
+        imagePullPolicy: Always  
         ports:
         - containerPort: 5000
         env:
-        - name: db-host
+        - name: DB_HOST
           valueFrom:
-           secretKeyRef:
-            name: db-secret
-            key: DB-HOST
-        - name: db-username
+            secretKeyRef:
+              name: db-secret
+              key: DB_HOST
+
+        - name: DB_USER
           valueFrom:
-           secretKeyRef:
-            name: db-secret
-            key: DB_USER
-        - name: db-username
+            secretKeyRef:
+              name: db-secret
+              key: DB_USER
+
+        - name: DB_PASSWORD
           valueFrom:
-           secretKeyRef:
-            name: db-secret
-            key: DB_USER
-        - name: db-pass
+            secretKeyRef:
+              name: db-secret
+              key: DB_PASSWORD
+
+        - name: DB_PORT
           valueFrom:
-           secretKeyRef:
-            name: db-secret
-            key: DB_PASSWORD
-        - name: db-port
+            secretKeyRef:
+              name: db-secret
+              key: DB_PORT
+
+        - name: DB_NAME
           valueFrom:
-           secretKeyRef:
-            name: db-secret
-            key: DB_PORT
+            secretKeyRef:
+              name: db-secret
+              key: DB_NAME
+        - name: MONGO_URL
+          value:  mongodb://$(DB_USER):$(DB_PASSWORD)@db-service:27017/ecommerce?authSource=admin
         resources:
-          limits:
-            memory: "512Mi"   
-            cpu: "500m"
-          requests:   
-            memory: "256Mi"
+          requests:
             cpu: "250m"
-  
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"

@@ -1,5 +1,6 @@
 resource "aws_ecr_repository" "repos" {
   for_each = toset(var.repositories)
+  force_delete = true
 
   name                 = "${var.cluster_name}/${each.key}"
   image_tag_mutability = "MUTABLE"

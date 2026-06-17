@@ -3,7 +3,7 @@ region = "us-east-1"
 name = "eks-platform"
 
 cluster_name    = "eks-cluster"
-cluster_version = "1.29"
+cluster_version = "1.31"
 
 vpc_cidr = "10.0.0.0/16"
 

@@ -16,9 +16,10 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: alaa/node-react-ecommerce-backend:latest
+        image: 524558748637.dkr.ecr.us-east-1.amazonaws.com/eks-cluster/frontend:latest
+        imagePullPolicy: Always  
         ports:
-        - containerPort: 3000
+        - containerPort: 80
 
     
   
