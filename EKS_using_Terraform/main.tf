@@ -192,7 +192,7 @@ module "efs_csi_irsa" {
   oidc_issuer       = replace(module.eks.oidc_url, "https://", "")
   namespace         = "kube-system"
   service_account   = "efs-csi-controller-sa"
-  policy_arn        = module.iam_policy.ebs_csi_policy_arn
+  policy_arn        = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
 }
 
 module "efs_csi" {
