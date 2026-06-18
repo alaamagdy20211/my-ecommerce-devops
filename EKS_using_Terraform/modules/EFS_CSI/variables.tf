@@ -16,3 +16,13 @@ variable "helm_chart_version" {
   type        = string
   default     = "0.9.13"
 }
+
+variable "vpc_id" {
+  type = string
+}
+variable "node_security_group_id" {
+  
+}
+variable "private_subnets" {
+  
+}

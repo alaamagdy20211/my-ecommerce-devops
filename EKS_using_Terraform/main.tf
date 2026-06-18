@@ -200,5 +200,8 @@ module "efs_csi" {
   service_account_name = "efs-csi-controller-sa"
   irsa_role_arn = module.efs_csi_irsa.role_arn
   namespace= "kube-system"
+  vpc_id = module.vpc.vpc_id
+  private_subnets = module.vpc.private_subnets
+  node_security_group_id = module.eks.node_security_group_id
   depends_on = [module.eks, module.efs_csi_irsa]
 }
