@@ -26,6 +26,5 @@ output "cluster_certificate_authority_data" {
 }
 
 output "node_security_group_id" {
-  value = aws_eks_node_group.this.id
-  
+  value = aws_security_group.eks_nodes.id
 }

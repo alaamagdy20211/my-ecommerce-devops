@@ -77,15 +77,76 @@ resource "aws_iam_role_policy_attachment" "node" {
   policy_arn = each.value
 }
 
-resource "aws_eks_node_group" "this" {
+resource "aws_security_group" "eks_nodes" {
+  name_prefix = "${var.cluster_name}-node-sg-"
+  vpc_id      = var.vpc_id
+
+  tags = merge(var.tags, {
+    Name = "${var.cluster_name}-node-sg"
+  })
+}
+
+resource "aws_security_group_rule" "node_ingress_cluster" {
+  type                     = "ingress"
+  from_port                = 0
+  to_port                  = 65535
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.eks_nodes.id
+  source_security_group_id = aws_eks_cluster.eks_cluster.vpc_config[0].cluster_security_group_id
+}
+
+
+# Node-to-node (pod networking, CNI, DNS between pods on different nodes)
+resource "aws_security_group_rule" "node_ingress_self" {
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "-1"
+  security_group_id = aws_security_group.eks_nodes.id
+  self              = true
+}
+
+# All outbound (image pulls, EKS API, AWS service endpoints, etc.)
+resource "aws_security_group_rule" "node_egress_all" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.eks_nodes.id
+}
+
+
+
+resource "aws_launch_template" "eks_nodes" {
+  name_prefix = "${var.cluster_name}-node-"
+
+  vpc_security_group_ids = [aws_security_group.eks_nodes.id ,  
+  aws_eks_cluster.eks_cluster.vpc_config[0].cluster_security_group_id
+]
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = var.tags
+  }
+}
+
+resource "aws_eks_node_group" "node" {
   for_each = var.node_groups
 
   cluster_name    = aws_eks_cluster.eks_cluster.name
   node_group_name = "${var.cluster_name}-${each.key}"
   node_role_arn   = aws_iam_role.eks_node_role.arn
   subnet_ids      = var.private_subnets
-  ami_type        = "AL2023_x86_64_STANDARD"
+  capacity_type   = "ON_DEMAND"
+  ami_type = "AL2023_x86_64_STANDARD"
 
+
+  launch_template {
+    id      = aws_launch_template.eks_nodes.id
+    version = "$Latest"
+  }
+ 
   scaling_config {
     desired_size = each.value.desired
     max_size     = each.value.max
@@ -93,7 +154,6 @@ resource "aws_eks_node_group" "this" {
   }
 
   instance_types = each.value.instance_types
-  capacity_type  = "ON_DEMAND"
 
   update_config {
     max_unavailable = 1
