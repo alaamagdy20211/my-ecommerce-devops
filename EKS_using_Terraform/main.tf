@@ -82,6 +82,7 @@ module "eks" {
   cluster_version = var.cluster_version
   private_subnets = module.vpc.private_subnets
   node_groups     = var.node_groups
+  vpc_id = module.vpc.vpc_id
   tags            = var.tags
 }
 
@@ -204,4 +205,29 @@ module "efs_csi" {
   private_subnets = module.vpc.private_subnets
   node_security_group_id = module.eks.node_security_group_id
   depends_on = [module.eks, module.efs_csi_irsa]
+}
+
+
+
+# module "jenkins_controller_irsa" {
+#   source = "./modules/IRSA"
+
+#   name              = "jenkins-agent-role"
+#   oidc_provider_arn = module.eks.oidc_arn
+#   oidc_issuer       = replace(module.eks.oidc_url, "https://", "")
+#   namespace         = "cicd"
+#   service_account   = "jenkins-controller-sa"
+#   policy_arn        = "arn:aws:iam::aws:policy/service-role/AmazonElasticFileSystemFullAccess"
+# }
+
+
+module "jenkins_agent_irsa" {
+  source = "./modules/IRSA"
+
+  name              = "jenkins-agent-role"
+  oidc_provider_arn = module.eks.oidc_arn
+  oidc_issuer       = replace(module.eks.oidc_url, "https://", "")
+  namespace         = "cicd"
+  service_account   = "jenkins-agent-sa"
+  policy_arn        = module.iam_policy.jenkins_agent_policy
 }
