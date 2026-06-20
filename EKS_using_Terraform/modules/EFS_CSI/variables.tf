@@ -14,7 +14,7 @@ variable "irsa_role_arn" {
 variable "helm_chart_version" {
   description = "Version of the external-secrets Helm chart"
   type        = string
-  default     = "0.9.13"
+  default     = "4.3.0"
 }
 
 variable "vpc_id" {
