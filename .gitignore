@@ -43,3 +43,4 @@ frontend/yarn-lock.json
 secrets.json
 
 my-ecommerce-devops/EKS_using_Terraform/modules/iam/alb_policy.json
+notes.txt
