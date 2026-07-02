@@ -1,0 +1,89 @@
+pipeline {
+    agent {
+        kubernetes {
+            inheritFrom 'default-agent'
+        }
+    }
+
+    environment {
+        AWS_REGION = "us-east-1"
+        ECR_REGISTRY = "524558748637.dkr.ecr.us-east-1.amazonaws.com"
+        IMAGE_NAME = "frontend"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        IMAGE = "${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+
+        stage('Build and Push Frontend Image') {
+            when {
+                changeset pattern: "frontend/**", comparator: "GLOB"
+            }
+
+            steps {
+                container('kaniko') {
+                    sh '''
+                    cd frontend
+                    echo "Building image ${IMAGE}"
+
+                    /kaniko/executor \
+                      --context $WORKSPACE/frontend \
+                      --dockerfile $WORKSPACE/frontend/Dockerfile \
+                      --destination=${IMAGE} \
+                      --cache=true \
+                      --cache-repo=${ECR_REGISTRY}/${IMAGE_NAME}-cache
+                    '''
+                }
+            }
+        }
+
+        stage('Verify Image') {
+            when {
+                changeset pattern: "frontend/**", comparator: "GLOB"
+            }
+
+            steps {
+                container('jnlp') {
+                    sh '''
+                    echo "Image pushed successfully"
+                    echo "${IMAGE}"
+                    '''
+                }
+            }
+        }
+
+        stage('Save Artifact') {
+            when {
+                changeset pattern: "frontend/**", comparator: "GLOB"
+            }
+
+            steps {
+                writeFile file: 'image-tag.txt', text: "${IMAGE_TAG}"
+                archiveArtifacts artifacts: 'image-tag.txt'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully."
+
+            script {
+                if (currentBuild.changeSets.size() > 0) {
+                    echo "Image: ${IMAGE}"
+                }
+            }
+        }
+
+        failure {
+            echo "Pipeline failed."
+        }
+    }
+}
