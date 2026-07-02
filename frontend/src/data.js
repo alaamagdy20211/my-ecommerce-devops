@@ -10,6 +10,8 @@ export default {
       rating: 4.5,
       numReviews: 10
     },
+
+    
     {
       _id: '2',
       name: 'Fit Shirt',
