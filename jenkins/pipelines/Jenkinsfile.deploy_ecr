@@ -6,7 +6,7 @@ pipeline {
     environment {
         AWS_REGION = "us-east-1"
         ECR_REGISTRY = "524558748637.dkr.ecr.us-east-1.amazonaws.com"
-        IMAGE_NAME = "frontend"
+        IMAGE_NAME = "eks-cluster/frontend"
         IMAGE_TAG = "${BUILD_NUMBER}"
         IMAGE = "${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
     }
@@ -36,7 +36,7 @@ pipeline {
                       --dockerfile $WORKSPACE/frontend/Dockerfile \
                       --destination=${IMAGE} \
                       --cache=true \
-                      --cache-repo=${ECR_REGISTRY}/${IMAGE_NAME}-cache
+                      --cache-repo=${ECR_REGISTRY}/eks-cluster/frontend-cache
                     '''
                 }
             }
