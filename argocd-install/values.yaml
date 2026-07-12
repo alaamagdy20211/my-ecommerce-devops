@@ -1,0 +1,22 @@
+# helm repo add argo https://argoproj.github.io/argo-helm
+# helm repo update
+# kubectl create namespace argocd
+
+# helm install argocd argo/argo-cd \
+#   -n argocd \
+#   -f values.yaml
+
+server:
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: true
+    ingressClassName: alb
+
+    annotations:
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+
