@@ -19,14 +19,11 @@ variable "helm_chart_version" {
   default     = "1.8.1"
 }
 
-# FIX: Added — the IRSA role ARN must be annotated on the service account
-# so the controller pod can assume it via pod identity/IRSA.
 variable "irsa_role_arn" {
   description = "IAM role ARN (IRSA) for the ALB controller service account"
   type        = string
 }
 
-# FIX: Added — must match the service account name used in the IRSA trust policy.
 variable "service_account_name" {
   description = "Service account name for the ALB controller (must match IRSA trust policy)"
   type        = string
